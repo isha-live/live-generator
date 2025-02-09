@@ -140,7 +140,6 @@ function insertBroadcast(data) {
             enableAutoStart: data['Auto Start'],
             enableAutoStop: data['Auto Stop'],
             latencyPreference: data['Latency'],
-            boundStreamId: data['Key ID'],
         },
     };
     const path = buildUrl('liveBroadcasts', { part: 'snippet,contentDetails,status' });
@@ -190,7 +189,25 @@ function getStreams() {
         id: item.id,
         title: item.snippet.title,
         key: item.cdn.ingestionInfo.streamName,
+        channelId: item.snippet.channelId,
     }));
-    console.log(streams);
+    console.log('getStreams()', streams);
+    console.log('getStreams()', JSON.stringify(response[0], null, 2));
     return streams;
+}
+
+function getMyChannel() {
+    const path = buildUrl('channels', { part: 'snippet,contentDetails', mine: 'true' });
+    const callOptions = { method: 'GET' };
+    const response = fetchUrl(path, getToken_(), callOptions);
+    console.log('getMyChannel()', JSON.stringify(response, null, 2));
+    const channelsNum = response.pageInfo.totalResults;
+    if (channelsNum !== 1 || response.items.length !== 1) {
+        throw new Error(`getMyChannel() returned ${channelsNum} channels instead of 1.`);
+    }
+    const channel = response.items[0];
+    return {
+        id: channel.id,
+        title: channel.snippet.title,
+    };
 }

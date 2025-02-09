@@ -19,118 +19,131 @@
     </style>
   </head>
   <body class="m-3">
-    <div id="loading">Loading...</div>
+    <div id="yt-loading">YouTube is loading...</div>
 
-    <div id="not-signed-in" class="hidden">
-      <p>Please authorize your YouTube account to continue.</p>
-      <button id="sign-in-btn" class="action">Sign In</button>
+    <div id="yt-not-signed-in" class="hidden">
+      <p>Please authorize your YouTube account.</p>
+      <button onclick="signInYouTube()" class="action">Sign In</button>
     </div>
 
-    <div id="signed-in" class="hidden">
-      <div>
-        <p>
-          Hello <b><span id="user-email">...</span></b
-          >,
-        </p>
-        <button id="sign-out-btn">Sign Out</button>
-        <hr />
-        <br />
-        <p>If some of the stream keys were changed please update them.</p>
-        <button id="update-keys-btn" class="action">Update Keys</button>
-        <br />
-        <p>
-          To schedule new live broadcasts please fill the details and select those rows. If you leave year, month, day, or hour empty it will use the
-          current date.
-        </p>
-        <button id="schedule-broadcasts-btn" class="action">Schedule Broadcasts</button>
-        <br />
-        <p class="grey" id="message"></p>
-        <p class="error" id="error"></p>
-      </div>
+    <div id="yt-signed-in" class="hidden">
+      <p>
+        Hello <b><span id="yt-user-email">...</span></b
+        >,
+      </p>
+      <p>
+        <b><span id="yt-channel">...</span></b> Channel <button onclick="signOutYouTube()">Sign Out</button>
+      </p>
+      <hr />
+      <p>If some of the stream keys were changed please update them.</p>
+      <button onclick="updateStreamKeys()" class="action">Update Keys</button>
+      <br />
+      <p>
+        To schedule new live broadcasts please fill the details and select those rows. If you leave year, month, day, or hour empty it will use the
+        current date.
+      </p>
+      <button onclick="scheduleYouTubeBroadcasts()" class="action">Schedule Broadcasts</button>
+      <br />
+      <p class="grey" id="yt-message"></p>
+      <p class="error" id="yt-error"></p>
     </div>
+
+    <hr />
+    <div id="zo-loading">Zoom is loading...</div>
+
+    <div id="zo-not-signed-in" class="hidden">
+      <p>Please authorize your Zoom account to continue.</p>
+      <button onclick="signInZoom()" class="action">Sign In</button>
+    </div>
+    <div id="zo-signed-in" class="hidden"></div>
 
     <script>
-      const authorizationUrl = '<?= authorizationUrl ?>';
-      const notSignedInDiv = document.getElementById('not-signed-in');
-      const signedInDiv = document.getElementById('signed-in');
-      const loadingDiv = document.getElementById('loading');
-      const userEmailSpan = document.getElementById('user-email');
-      const messageElem = document.getElementById('message');
-      const errorElem = document.getElementById('error');
+      const authUrlYt = '<?= authUrlYouTube ?>';
+      const loadingYtDiv = document.getElementById('yt-loading');
+      const userEmailYtSpan = document.getElementById('yt-user-email');
+      const channelYtElem = document.getElementById('yt-channel');
+      const messageYtElem = document.getElementById('yt-message');
+      const errorYtElem = document.getElementById('yt-error');
 
-      function signIn() {
-        window.open(authorizationUrl);
+      const signedInYtDiv = document.getElementById('yt-signed-in');
+      const notSignedInYtDiv = document.getElementById('yt-not-signed-in');
+
+      function signInYouTube() {
+        window.open(authUrlYt);
       }
-      document.getElementById('sign-in-btn').addEventListener('click', signIn);
 
-      function signOut() {
+      function signOutYouTube() {
         google.script.run
           .withSuccessHandler(() => {
-            updateUI();
+            updateYtUI();
           })
           .signOut();
       }
-      document.getElementById('sign-out-btn').addEventListener('click', signOut);
 
       function updateStreamKeys() {
-        messageElem.textContent = 'Loading...';
-        messageElem.classList.remove('hidden');
-        errorElem.classList.add('hidden');
+        messageYtElem.textContent = 'Loading...';
+        messageYtElem.classList.remove('hidden');
+        errorYtElem.classList.add('hidden');
         google.script.run
           .withSuccessHandler((message) => {
-            messageElem.textContent = message;
+            messageYtElem.textContent = message;
           })
-          .withFailureHandler((e) => {
-            errorElem.textContent = e.message;
-            messageElem.classList.add('hidden');
-            errorElem.classList.remove('hidden');
-          })
+          .withFailureHandler(failureHandler)
           .updateStreamKeys();
       }
-      document.getElementById('update-keys-btn').addEventListener('click', updateStreamKeys);
 
-      function scheduleBroadcasts() {
-        messageElem.textContent = 'Loading...';
-        messageElem.classList.remove('hidden');
-        errorElem.classList.add('hidden');
+      function scheduleYouTubeBroadcasts() {
+        messageYtElem.textContent = 'Loading...';
+        messageYtElem.classList.remove('hidden');
+        errorYtElem.classList.add('hidden');
         google.script.run
           .withSuccessHandler((message) => {
-            messageElem.textContent = message;
+            messageYtElem.textContent = message;
           })
-          .withFailureHandler((e) => {
-            errorElem.textContent = e.message;
-            messageElem.classList.add('hidden');
-            errorElem.classList.remove('hidden');
-          })
+          .withFailureHandler(failureHandler)
           .scheduleBroadcasts();
       }
-      document.getElementById('schedule-broadcasts-btn').addEventListener('click', scheduleBroadcasts);
 
-      function updateUI() {
-        loadingDiv.classList.remove('hidden');
-        notSignedInDiv.classList.add('hidden');
-        signedInDiv.classList.add('hidden');
+      function updateYtUI() {
+        loadingYtDiv.classList.remove('hidden');
+        signedInYtDiv.classList.add('hidden');
+        notSignedInYtDiv.classList.add('hidden');
 
         google.script.run
           .withSuccessHandler((hasAccess) => {
-            loadingDiv.classList.add('hidden');
+            loadingYtDiv.classList.add('hidden');
             if (hasAccess) {
               google.script.run
                 .withSuccessHandler((email) => {
-                  userEmailSpan.textContent = email;
+                  userEmailYtSpan.textContent = email;
                 })
+                .withFailureHandler(failureHandler)
                 .getUserEmail();
-              notSignedInDiv.classList.add('hidden');
-              signedInDiv.classList.remove('hidden');
+              google.script.run
+                .withSuccessHandler((channel) => {
+                  channelYtElem.textContent = channel.title;
+                  google.script.run.withFailureHandler(failureHandler).addChannel(channel.id, channel.title);
+                })
+                .withFailureHandler(failureHandler)
+                .getMyChannel();
+              signedInYtDiv.classList.remove('hidden');
+              notSignedInYtDiv.classList.add('hidden');
             } else {
-              notSignedInDiv.classList.remove('hidden');
-              signedInDiv.classList.add('hidden');
+              signedInYtDiv.classList.add('hidden');
+              notSignedInYtDiv.classList.remove('hidden');
             }
           })
+          .withFailureHandler(failureHandler)
           .hasAccess();
       }
 
-      updateUI();
+      const failureHandler = (e) => {
+        errorYtElem.textContent = e.message;
+        messageYtElem.classList.add('hidden');
+        errorYtElem.classList.remove('hidden');
+      };
+
+      updateYtUI();
     </script>
   </body>
 </html>
