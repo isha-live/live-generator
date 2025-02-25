@@ -16,57 +16,47 @@
       .m-3 {
         margin: 0.75rem;
       }
+      .p-1 {
+        padding: 0.25rem;
+      }
+      .overflow-y-scroll {
+        overflow-y: scroll;
+      }
+      .h-24 {
+        max-height: 6rem;
+      }
     </style>
   </head>
   <body class="m-3">
-    <div id="yt-loading">YouTube is loading...</div>
+    <div id="yt-container">
+      <div class="logs h-24 overflow-y-scroll"></div>
 
-    <div id="yt-not-signed-in" class="hidden">
-      <p>Please authorize your YouTube account.</p>
-      <button onclick="signInYouTube()" class="action">Sign In</button>
+      <div class="not-signed hidden">
+        <p>Please authorize your YouTube account.</p>
+        <button onclick="signInYouTube()" class="action">Sign In</button>
+      </div>
+
+      <div class="signed hidden">
+        <p>
+          Hello <b><span class="user-email">...</span></b>
+        </p>
+        <p>
+          <b><span class="channel">...</span></b> Channel <button onclick="signOutYouTube()">Sign Out</button>
+        </p>
+        <hr />
+        <button onclick="scheduleYouTubeBroadcasts()" class="action">Schedule Selected Rows</button>
+        <p>If you leave year, month, day, or hour empty it will use the current date.</p>
+        <br />
+        <button onclick="updateStreamKeys()" class="action">Update Stream Keys</button>
+        <br />
+      </div>
     </div>
-
-    <div id="yt-signed-in" class="hidden">
-      <p>
-        Hello <b><span id="yt-user-email">...</span></b
-        >,
-      </p>
-      <p>
-        <b><span id="yt-channel">...</span></b> Channel <button onclick="signOutYouTube()">Sign Out</button>
-      </p>
-      <hr />
-      <p>If some of the stream keys were changed please update them.</p>
-      <button onclick="updateStreamKeys()" class="action">Update Keys</button>
-      <br />
-      <p>
-        To schedule new live broadcasts please fill the details and select those rows. If you leave year, month, day, or hour empty it will use the
-        current date.
-      </p>
-      <button onclick="scheduleYouTubeBroadcasts()" class="action">Schedule Broadcasts</button>
-      <br />
-      <p class="grey" id="yt-message"></p>
-      <p class="error" id="yt-error"></p>
-    </div>
-
-    <hr />
-    <div id="zo-loading">Zoom is loading...</div>
-
-    <div id="zo-not-signed-in" class="hidden">
-      <p>Please authorize your Zoom account to continue.</p>
-      <button onclick="signInZoom()" class="action">Sign In</button>
-    </div>
-    <div id="zo-signed-in" class="hidden"></div>
 
     <script>
       const authUrlYt = '<?= authUrlYouTube ?>';
-      const loadingYtDiv = document.getElementById('yt-loading');
-      const userEmailYtSpan = document.getElementById('yt-user-email');
-      const channelYtElem = document.getElementById('yt-channel');
-      const messageYtElem = document.getElementById('yt-message');
-      const errorYtElem = document.getElementById('yt-error');
-
-      const signedInYtDiv = document.getElementById('yt-signed-in');
-      const notSignedInYtDiv = document.getElementById('yt-not-signed-in');
+      const ytElem = document.getElementById('yt-container');
+      const signedInYtDiv = ytElem.querySelector('.signed');
+      const notSignedInYtDiv = ytElem.querySelector('.not-signed');
 
       function signInYouTube() {
         window.open(authUrlYt);
@@ -81,50 +71,41 @@
       }
 
       function updateStreamKeys() {
-        messageYtElem.textContent = 'Loading...';
-        messageYtElem.classList.remove('hidden');
-        errorYtElem.classList.add('hidden');
+        showResponse('Updating YouTube stream keys...');
         google.script.run
-          .withSuccessHandler((message) => {
-            messageYtElem.textContent = message;
-          })
-          .withFailureHandler(failureHandler)
+          .withSuccessHandler((msg) => showResponse(msg))
+          .withFailureHandler((e) => showError(e))
           .updateStreamKeys();
       }
 
       function scheduleYouTubeBroadcasts() {
-        messageYtElem.textContent = 'Loading...';
-        messageYtElem.classList.remove('hidden');
-        errorYtElem.classList.add('hidden');
+        showResponse('Scheduling YouTube Broadcasts...');
         google.script.run
-          .withSuccessHandler((message) => {
-            messageYtElem.textContent = message;
-          })
-          .withFailureHandler(failureHandler)
+          .withSuccessHandler((msg) => showResponse(msg))
+          .withFailureHandler((e) => showError(e))
           .scheduleBroadcasts();
       }
 
       function updateYtUI() {
-        loadingYtDiv.classList.remove('hidden');
+        showResponse('Loading...');
         signedInYtDiv.classList.add('hidden');
         notSignedInYtDiv.classList.add('hidden');
 
         google.script.run
           .withSuccessHandler((hasAccess) => {
-            loadingYtDiv.classList.add('hidden');
             if (hasAccess) {
               google.script.run
                 .withSuccessHandler((email) => {
-                  userEmailYtSpan.textContent = email;
+                  ytElem.querySelector('.user-email').textContent = email;
                 })
-                .withFailureHandler(failureHandler)
+                .withFailureHandler((e) => showError(e))
                 .getUserEmail();
               google.script.run
                 .withSuccessHandler((channel) => {
-                  channelYtElem.textContent = channel.title;
-                  google.script.run.withFailureHandler(failureHandler).addChannel(channel.id, channel.title);
+                  ytElem.querySelector('.channel').textContent = channel.title;
+                  google.script.run.withFailureHandler((e) => showError(e)).addChannel(channel.id, channel.title);
                 })
-                .withFailureHandler(failureHandler)
+                .withFailureHandler((e) => showError(e))
                 .getMyChannel();
               signedInYtDiv.classList.remove('hidden');
               notSignedInYtDiv.classList.add('hidden');
@@ -133,15 +114,28 @@
               notSignedInYtDiv.classList.remove('hidden');
             }
           })
-          .withFailureHandler(failureHandler)
+          .withFailureHandler((e) => showError(e))
           .hasAccess();
       }
 
-      const failureHandler = (e) => {
-        errorYtElem.textContent = e.message;
-        messageYtElem.classList.add('hidden');
-        errorYtElem.classList.remove('hidden');
-      };
+      function showResponse(value, isError = false, time = Date.now()) {
+        const logs = document.querySelector('.logs');
+        const timestamp = new Date(time).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+
+        logs.innerHTML =
+          `<p class="${isError ? 'error' : ''}">
+                <span class="secondary">[${timestamp}]</span>
+                ${escapeHtml(value)}
+            </p><hr />` + logs.innerHTML;
+      }
+
+      function showError(msg) {
+        showResponse(msg, true);
+      }
+
+      function escapeHtml(str) {
+        return new Option(String(str)).innerHTML;
+      }
 
       updateYtUI();
     </script>
